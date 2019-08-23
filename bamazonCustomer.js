@@ -16,29 +16,14 @@ connection.connect(function (err) {
 
 
 
-function howMany() {
-    inquirer
-        .prompt({
-            name: "quantity",
-            type: "input",
-            message: "How many would you like to buy?",
-        })
-        .then(function (answer) {
-            var userQuantity = answer;
-            
-        }
-        )
-};
-
-
-
 
 function displayAll() {
 
     var query = "SELECT * FROM products";
     connection.query(query, function (err, res) {
         for (var i = 0; i < res.length; i++) {
-            console.log("Name: " + res[i].product_name + " " + res[i].department_name + " || Price: " + res[i].price + " || Quantity: " + res[i].stock_quantity) + " || ID: " + res[i].item_id;
+            console.log("Name: " + res[i].product_name + " " + res[i].department_name + " || Price: " + res[i].price + " || Quantity: " + res[i].stock_quantity + " || ID: " + res[i].item_id);
+            console.log("");
         }
     });
     chooseProduct();
@@ -47,32 +32,60 @@ function displayAll() {
 
 
 function chooseProduct() {
-    inquirer
-        .prompt({
-            name: "choose",
+    inquirer.prompt([
+        {
+            name: "ID",
             type: "input",
-            message: "What is the ID of the item you would like to buy?" + "\n",
-        })
-        .then(function (answer) {
-            var userChoice = answer;
-            var query2 = "SELECT item_id, product_name, department_name, price, stock_quantity FROM products WHERE item_id is ?";
-            connection.query(query2, { choose: answer.choose }, function (err, res) {
-                console.log(res);
-            });
-            howMany();
-        }
-        )
+            message: "Please enter the ID of the item you would like to purchase.",
+            filter: Number
+        },
+        {
+            name: "Quantity",
+            type: "input",
+            message: "How many items do you wish to purchase?",
+            filter: Number
+        },
+    ]).then(function (answers) {
+        var inputQuantity = answers.Quantity;
+        var inputID = answers.ID;
+        purchase(inputID, inputQuantity);
+    }
+    )
 };
 
+function purchase(inputID, inputQuantity){
+    var query2 = 'Select * FROM products WHERE item_id = ' + inputID;
+    connection.query(query2, function (err, res) {
+        if(err){console.log(err)};
+        var stockQuantity = res[0].stock_quantity;
+        var price = res[0].price;
+        checkQuantity(inputID, inputQuantity, stockQuantity, price);
 
-function checkQuantity(userChoice, userQuantity) {
-    if (userQuantity > itemQuantity) {
+    });
+}
+
+
+function checkQuantity(inputID, inputQuantity, stockQuantity, price) {
+    if (inputQuantity > stockQuantity) {
         console.log("Insufficient Quantity, please select a different product or a lower quantity!");
+        
+        displayAll();
     }
-    if (userQuantity < itemQuantity) {
-        console.log("Item Purchased!")
-        console.log("Your total cost is" + (userQuantity * price));
+    if (inputQuantity <= stockQuantity) {
+        var newStock = (stockQuantity - inputQuantity);
+        console.log("Your total cost is " + (inputQuantity * price));
+        connection.query("UPDATE products SET ? WHERE ?", [{
+            stock_quantity: newStock
+        }, {
+            item_id: inputID
+        }], function(err, res) {});
+
+        displayAll();
     }
 };
+
+
+	
+
 
 
